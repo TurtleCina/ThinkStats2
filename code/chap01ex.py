@@ -7,6 +7,8 @@ License: GNU GPLv3 http://www.gnu.org/licenses/gpl.html
 
 from __future__ import print_function
 
+from collections import defaultdict
+
 import numpy as np
 import sys
 
@@ -14,13 +16,72 @@ import nsfg
 import thinkstats2
 
 
-def main(script):
+def ReadFemResp(dct_file='2002FemResp.dct',
+                dat_file='2002FemResp.dat.gz',
+                nrows=None):
+    """Reads the NSFG respondent data.
+
+    dct_file: string file name
+    dat_file: string file name
+
+    returns: DataFrame
+    """
+    dct = thinkstats2.ReadStataDct(dct_file)
+    df = dct.ReadFixedWidth(dat_file, compression='gzip', nrows=nrows)
+    CleanFemResp(df)
+    return df
+
+
+def CleanFemResp(df):
+    """Recodes variables from the respondent frame.
+
+    df: DataFrame
+    """
+    pass
+
+def ValidatePregnum(resp, preg):
+    """Validate pregnum in the respondent file.
+    resp: respondent DataFrame
+    """
+
+    preg_map = MakePregMap(preg)
+
+    # iterate through the respondent pregnum series
+    for index, pregnum in resp.pregnum.items():
+        caseid = resp.caseid[index]
+        indices = preg_map[caseid]
+
+        # check that pregnum from the respondent file equals
+        # the number of records in the pregnancy file
+        if len(indices) != pregnum:
+            print(caseid, len(indices), pregnum)
+            return False
+
+    return True
+
+
+def MakePregMap(df):
+    """Make a map from caseid to list of preg indices.
+
+    df: DataFrame
+
+    returns: dict that maps from caseid to list of indices into `preg`
+    """
+    d = defaultdict(list)
+    for index, caseid in df.caseid.items():
+        d[caseid].append(index)
+    return d
+
+
+def main():
     """Tests the functions in this module.
 
     script: string script name
     """
-    print('%s: All tests passed.' % script)
+    # read and validate the respondent file
+    resp = ReadFemResp()
+    print(resp.pregnum.value_counts().sort_index())
 
 
 if __name__ == '__main__':
-    main(*sys.argv)
+    main()
